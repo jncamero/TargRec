@@ -1,3 +1,5 @@
+#TEST
+
 library(lpSolve)
 noloci=10
 noinds=100
