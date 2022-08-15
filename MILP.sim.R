@@ -57,7 +57,15 @@ tmat=function(noloci){
 		tm[i,a]=1
 		tm[i,b]=-1
 	}
-	return(tm)
-}
 
+	tm2<-array(0,dim=c(ncol(tm)/16,noloci*16))
+		a=seq(1,ncol(tm),16)
+		b=seq(16,ncol(tm),16)
+		
+		for(i in 1:(noloci)){
+			tm2[i,a[i]:b[i]]=1
+		}
+
+	return(rbind(tm,tm2))
+}
 
