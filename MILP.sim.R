@@ -46,8 +46,9 @@ datacons<-function(noloci,noinds){
 
 dc<-datacons(noloci,noinds)
 
-#2 X matrix
-#Each value in X is the sum along 3rd dimension of data matrix
+#2) X matrix
+#Need to add marker effects as coefficients to 
+#X<=sumk(dataijk)
 xmat=function(noloci,noinds){
 		#Data variable matrix
 		#LHS
@@ -56,8 +57,8 @@ xmat=function(noloci,noinds){
 			it[i,seq(i,noloci*2*noinds,20)]=1
 		}
 		#RHS
-			x=diag(20)
-			itx=list(it,x)
+			x=-diag(noloci*2)
+			itx=cbind(x,it)
 			return(itx)
 	}
 
