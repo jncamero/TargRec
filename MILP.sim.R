@@ -1,6 +1,8 @@
 library(lpSolve)
 noloci=10
 noinds=100
+#linkage group 'endpoint' loci
+lgend=c(1,7)
 #SNP genotype matrix
 geno=matrix(sample(c(0,1),noloci*2*noinds,replace=TRUE),dim=c(1000,2,1000))
 
@@ -25,10 +27,22 @@ datacons<-function(noloci,noinds){
 		for(i in 1:nrow(cons)){
 			cons[i,three[i,1]:three[i,2]]=1
 		}
+		cons=rbind(cons,0)
+
 		sels=-diag(noinds)*(noloci*2)
-		ret=list(cons,sels)
-		return(ret)
+		sels=rbind(sels,1)
+		#LHS
+		lhs=cbind(cons,sels)
+		#RHS
+		rhs=c(rep(0,nrow(cons)),2)
+
+		signs=c(rep("<=",nrow(cons)),"=")
+		return(list(lhs,signs,rhs))
 	}
+#Output is:
+#1 LHS (data for selection of 2 parents)
+#2 Signs of constraints
+#3 RHS 
 
 dc<-datacons(noloci,noinds)
 
@@ -85,7 +99,6 @@ tmat=function(noloci,lgend){
 
 tm=tmat(noloci,lgend)
 #Markers at end of linkage group
-lgend<-1
 
 
 
