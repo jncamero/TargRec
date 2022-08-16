@@ -58,12 +58,16 @@ xmat=function(noloci,noinds){
 		}
 		#RHS
 			x=-diag(noloci*2)
-			itx=cbind(x,it)
-			return(itx)
+			y=array(0,dim=c(nrow(x),ncol(x)))
+			z=rbind(cbind(x,y),cbind(y,x))
+			it2=rbind(it,it)
+			lhs=cbind(it2,z)
+			sign=rep(rep("<=",nrow(lhs)),2)
+			rhs=rep(rep(0,nrow(lhs)),2)
+			return(list(lhs,sign,rhs))
 	}
 
 xm<-xmat(noloci,noinds)
-
 #3 Transition matrix
 #sumj(Tijk)=1
 #TM:noloci*16/4 - 4
@@ -85,6 +89,7 @@ tmat=function(noloci,lgend){
 	}
 
 	tm2<-array(0,dim=c(ncol(tm)/16,noloci*16))
+	tmzeros<-array(0,dim=c(ncol(tm)/16,noloci*16))
 		a=seq(1,ncol(tm),16)
 		b=seq(16,ncol(tm),16)
 		
