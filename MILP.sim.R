@@ -46,7 +46,7 @@ datacons<-function(noloci,noinds){
 
 dc<-datacons(noloci,noinds)
 
-#2) X matrix
+#2) X matrix, need 2x!
 #Need to add marker effects as coefficients to 
 #X<=sumk(dataijk)
 xmat=function(noloci,noinds){
