@@ -100,11 +100,25 @@ tmat=function(noloci,lgend){
 			tm2[i,a[i]:b[i]]=1
 		}
 	}
-	return(list(tm,tm2))
+
+	one=lgend*16-16+1
+	two=one+15
+	#Targeted recombination constraint
+	trc=rep(c(0,1,1,1),4*noloci)
+			for(i in 1:length(one)){
+				trc[one[i]:two[i]]=0
+			}
+
+#LHS
+lhs=rbind(tm,tm2,trc)
+sign=c(rep("=",nrow(tm)),rep("=",nrow(tm2)))
+rhs=c(rep(0,nrow(tm)),rep(1,nrow(tm2)))
+
+	return(list(lhs,sign,rhs))
 }
 
 tm=tmat(noloci,lgend)
-#Markers at end of linkage group
 
+#Objective Function
 
 
