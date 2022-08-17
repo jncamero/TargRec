@@ -3,6 +3,10 @@ noloci=10
 noinds=100
 #linkage group 'endpoint' loci
 lgend=c(1,7)
+
+#Number of feasible recombinations
+norec=8
+
 #SNP genotype matrix
 geno=matrix(sample(c(0,1),noloci*2*noinds,replace=TRUE),dim=c(1000,2,1000))
 
@@ -74,22 +78,41 @@ xm<-xmat(noloci,noinds)
 #TM2:16*noloci,noloci
 #T11k,T21k,T31k,T41k,T22k,T12k,T32k,T42k,T33k,T13k,T23k,T43k,T44k,T14k,T24k,T34k
 
-#Need to modify new linkage group constraints in tm2
-#1) T111 + T221 + T331 + T441 = 1
-tmat=function(noloci,lgend){
-	iter=(noloci*16/4)-4
-	tm<-array(0,dim=c(iter,noloci*16))
-	ind1=1:4
-	ind2=17:20
-	for(i in 1:iter){
-		a=ind1+4*(i-1)
-		b=ind2+4*(i-1)
-		tm[i,a]=1
-		tm[i,b]=-1
-	}
 
-	tm2<-array(0,dim=c(ncol(tm)/16,noloci*16))
-	tmzeros<-array(0,dim=c(ncol(tm)/16,noloci*16))
+one=array(0,32)
+one[1:4]=1
+one[16+c(1,6,10,14)]=1
+
+two=array(0,32)
+two[5:8]=1
+two[16+c(2,5,11,15)]=1
+
+three=array(0,32)
+three[9:12]=1
+three[16+c(3,7,9,16)]=1
+
+four=array(0,32)
+four[13:16]=1
+four[16+c(4,8,12,13)]=1
+tmat<-function(one,two,three,four){
+
+	#Constraint that inflow must equal outflow
+	output=c()
+	holder=array(0,16)
+	for(i in 1:9){
+		a=rep(holder,i-1)
+		b=rep(0,160-length(a)-32)
+		output<-rbind(output,c(a,one,b),
+		c(a,two,b),
+		c(a,three,b),
+		c(a,four,b))
+			}
+	one=lgend*16-16+1
+	two=one+15
+
+	#Constraint that only 'decision' can occur at a locus (i.e. recombine vs. not recombine)
+		tm2<-array(0,dim=c(ncol(tm)/16,noloci*16))
+		tmzeros<-array(0,dim=c(ncol(tm)/16,noloci*16))
 		a=seq(1,ncol(tm),16)
 		b=seq(16,ncol(tm),16)
 		
@@ -101,8 +124,6 @@ tmat=function(noloci,lgend){
 		}
 	}
 
-	one=lgend*16-16+1
-	two=one+15
 	#Targeted recombination constraint
 	trc=rep(c(0,1,1,1),4*noloci)
 			for(i in 1:length(one)){
@@ -110,14 +131,20 @@ tmat=function(noloci,lgend){
 			}
 
 #LHS
-lhs=rbind(tm,tm2,trc)
-sign=c(rep("=",nrow(tm)),rep("=",nrow(tm2)))
-rhs=c(rep(0,nrow(tm)),rep(1,nrow(tm2)))
+lhs=rbind(output,tm2,trc)
+sign=c(rep("=",nrow(output)),rep("=",nrow(tm2)),"<=")
+rhs=c(rep(0,nrow(output)),rep(1,nrow(tm2)),norec)
 
 	return(list(lhs,sign,rhs))
+
 }
 
+
 tm=tmat(noloci,lgend)
+
+#Constraints on value of X by T
+
+
 
 #Objective Function
 
