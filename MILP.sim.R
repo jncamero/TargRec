@@ -94,14 +94,16 @@ three[16+c(3,7,9,16)]=1
 four=array(0,32)
 four[13:16]=1
 four[16+c(4,8,12,13)]=1
+
 tmat<-function(one,two,three,four){
 
-	#Constraint that inflow must equal outflow
+#Constraint: Inflow must equal outflow
 	output=c()
 	holder=array(0,16)
 	for(i in 1:9){
 		a=rep(holder,i-1)
 		b=rep(0,160-length(a)-32)
+		print(list(dim(a),dim(one),dim(b)))
 		output<-rbind(output,c(a,one,b),
 		c(a,two,b),
 		c(a,three,b),
@@ -110,21 +112,22 @@ tmat<-function(one,two,three,four){
 	one=lgend*16-16+1
 	two=one+15
 
-	#Constraint that only 'decision' can occur at a locus (i.e. recombine vs. not recombine)
-		tm2<-array(0,dim=c(ncol(tm)/16,noloci*16))
-		tmzeros<-array(0,dim=c(ncol(tm)/16,noloci*16))
-		a=seq(1,ncol(tm),16)
-		b=seq(16,ncol(tm),16)
+#Constraint: that only 1 'decision' can occur at a locus (i.e. recombine vs. not recombine)
+		tm2<-array(0,dim=c(ncol(output)/16,noloci*16))
+		tmzeros<-array(0,dim=c(ncol(output)/16,noloci*16))
+		a2=seq(1,ncol(output),16)
+		b2=seq(16,ncol(output),16)
 		
 		for(i in 1:(noloci)){
 			if(i%in%lgend){
 				tm2[i,c(1,5,9,13)]=1
 				}else{
-			tm2[i,a[i]:b[i]]=1
+			tm2[i,a2[i]:b2[i]]=1
 		}
 	}
 
-	#Targeted recombination constraint
+#Targeted recombination constraint: no more than norec recombinations
+#Accounting for linkage group end
 	trc=rep(c(0,1,1,1),4*noloci)
 			for(i in 1:length(one)){
 				trc[one[i]:two[i]]=0
@@ -140,7 +143,7 @@ rhs=c(rep(0,nrow(output)),rep(1,nrow(tm2)),norec)
 }
 
 
-tm=tmat(noloci,lgend)
+tm=tmat(one,two,three,four)
 
 #Constraints on value of X by T
 
