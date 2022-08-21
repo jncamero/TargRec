@@ -31,16 +31,25 @@ datacons<-function(noloci,noinds){
 		for(i in 1:nrow(cons)){
 			cons[i,three[i,1]:three[i,2]]=1
 		}
-		cons=rbind(cons,0)
+
+		cons<-rbind(cons,array(0,ncol(cons)))
+		zeros=array(0,dim=c(noinds+1,noinds))
 
 		sels=-diag(noinds)*(noloci*2)
-		sels=rbind(sels,1)
-		#LHS
-		lhs=cbind(cons,sels)
-		#RHS
-		rhs=c(rep(0,nrow(cons)),2)
 
-		signs=c(rep("<=",nrow(cons)),"=")
+		#sels=rbind(sels,1)
+		#LHS
+		sels2=rbind(sels,1)
+		a1=cbind(cons,sels2,zeros)
+
+		a2=cbind(cons,zeros,sels2)
+
+		lhs=rbind(a1,a2)
+		#RHS
+		rhs.half=c(rep(0,nrow(cons)-1),1)
+		rhs=rep(rhs.half,2)
+		signs1=c(rep("<=",(nrow(cons)-1)),">=")
+		signs2=c(rep("<=",(nrow(cons)-1)),">=")
 		return(list(lhs,signs,rhs))
 	}
 #Output is:
@@ -65,7 +74,10 @@ xmat=function(noloci,noinds){
 			y=array(0,dim=c(nrow(x),ncol(x)))
 			z=rbind(cbind(x,y),cbind(y,x))
 			it2=rbind(it,it)
-			lhs=cbind(it2,z)
+			#S variable from previous function
+			s=array(0,dim=c(nrow(it2),noinds))
+			#LHS variables: Data, S, 
+			lhs=cbind(it2,s,z)
 			sign=rep(rep("<=",nrow(lhs)),2)
 			rhs=rep(rep(0,nrow(lhs)),2)
 			return(list(lhs,sign,rhs))
@@ -77,7 +89,6 @@ xm<-xmat(noloci,noinds)
 #TM:noloci*16/4 - 4
 #TM2:16*noloci,noloci
 #T11k,T21k,T31k,T41k,T22k,T12k,T32k,T42k,T33k,T13k,T23k,T43k,T44k,T14k,T24k,T34k
-
 
 one=array(0,32)
 one[1:4]=1
@@ -127,7 +138,7 @@ tmat<-function(one,two,three,four){
 	}
 
 #Targeted recombination constraint: no more than norec recombinations
-#Accounting for linkage group end
+#Accounting for linkage group ends
 	trc=rep(c(0,1,1,1),4*noloci)
 			for(i in 1:length(one)){
 				trc[one[i]:two[i]]=0
