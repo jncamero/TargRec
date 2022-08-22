@@ -8,17 +8,17 @@ lgend=c(1,7)
 norec=8
 
 #SNP genotype matrix
-geno=matrix(sample(c(0,1),noloci*2*noinds,replace=TRUE),dim=c(1000,2,1000))
 
 x=seq(-0.3,0.3,0.001)
-
 y=rnorm(x,0,0.1)
-
-#
-effects=rnorm(1000,0,0.01)
+###################################################
+#Simulated marker effect matrix
+effects=rnorm(10,0,0.01)
+geno=array(sample(c(0,1),noloci*2*noinds,replace=TRUE),dim=c(noloci,2,noinds))
+efmat=array(rep(effects,noinds),dim=c(noloci,2,noinds))
 
 #Marker effect genotypic matrix
-mem=geno*effects
+data=geno*effects
 
 #1 Data a
 #Selecting mate-pair constraint
@@ -50,6 +50,7 @@ datacons<-function(noloci,noinds){
 		rhs=rep(rhs.half,2)
 		signs1=c(rep("<=",(nrow(cons)-1)),">=")
 		signs2=c(rep("<=",(nrow(cons)-1)),">=")
+		signs=c(signs1,signs2)
 		return(list(lhs,signs,rhs))
 	}
 #Output is:
@@ -74,8 +75,8 @@ xmat=function(noloci,noinds){
 			y=array(0,dim=c(nrow(x),ncol(x)))
 			z=rbind(cbind(x,y),cbind(y,x))
 			it2=rbind(it,it)
-			#S variable from previous function
-			s=array(0,dim=c(nrow(it2),noinds))
+			#S variable from previous function, picking 2 parents
+			s=array(0,dim=c(nrow(it2),noinds*2))
 			#LHS variables: Data, S, 
 			lhs=cbind(it2,s,z)
 			sign=rep(rep("<=",nrow(lhs)),2)
@@ -148,9 +149,7 @@ tmat<-function(one,two,three,four){
 lhs=rbind(output,tm2,trc)
 sign=c(rep("=",nrow(output)),rep("=",nrow(tm2)),"<=")
 rhs=c(rep(0,nrow(output)),rep(1,nrow(tm2)),norec)
-
 	return(list(lhs,sign,rhs))
-
 }
 
 
