@@ -155,10 +155,44 @@ rhs=c(rep(0,nrow(output)),rep(1,nrow(tm2)),norec)
 
 tm=tmat(one,two,three,four)
 
+############################################
 #Constraints on value of X by T
+xt<-function(tm,mx){
+xx=diag(noloci*4)
+tt=array(0,dim=c(4,160))
+tt[1,1]=-1
+tt[2,5]=-1
+tt[3,9]=-1
+tt[4,13]=-1
 
+zz=array(0,dim=c(nrow(xx),160))
 
+for(i in 5:nrow(zz)){
+zz[i,((i-1)*4+1):(i*4)]=-1
+}
 
-#Objective Function
+zz[1:4,]=tt[1:4,]
+ph=array(0,dim=c(nrow(tx2),2*(noinds*noloci+noinds)))
+lhs=cbind(ph,xx,zz)
+rhs=rep(0,nrow(lhs))
+sign=rep("<=",nrow(lhs))
 
+return(list(lhs,sign,rhs))
+}
 
+gg=xt(tm,mx)
+
+########################################
+#Compiling variables: LHS, SIGN, RHS
+compile<-function(dc,mx,gg){
+a<-ncol(gg[[1]])-ncol(dc[[1]])
+b<-ncol(gg[[1]])-ncol(xm[[1]])
+
+datamat=cbind(dc[[1]],array(0,dim=c(nrow(dc[[1]]),a)))
+xm2=cbind(xm[[1]],array(0,dim=c(nrow(xm[[1]]),b)))
+
+lhs.big=rbind(datamat,xm2,gg)
+sign.big=c(dc[[2]],xm2[[2]],gg[[2]])
+rhs.big=c(dc[[3]],xm[[3]],gg[[3]])
+return(list(lhs.big,sign.big))
+}
