@@ -40,16 +40,22 @@ datacons<-function(noloci,noinds){
 		#sels=rbind(sels,1)
 		#LHS
 		sels2=rbind(sels,1)
+		##########################################################
+		#Constraint variables for selecting only 1 individual for parent 1
+		#Constraint variables for selecting only 1 individual for parent 1
+		#Just integer variables, no marker effects
+		#[data variable for Parent 1][S variable][Zeros]
+		#[data variable for Parent 2][S variable][Zeros]
 		a1=cbind(cons,sels2,zeros)
-
 		a2=cbind(cons,zeros,sels2)
-
 		lhs=rbind(a1,a2)
+		###################################################
 		#RHS
+		#
 		rhs.half=c(rep(0,nrow(cons)-1),1)
 		rhs=rep(rhs.half,2)
-		signs1=c(rep("<=",(nrow(cons)-1)),">=")
-		signs2=c(rep("<=",(nrow(cons)-1)),">=")
+		signs1=c(rep("=",(nrow(cons)-1)),">=")
+		signs2=c(rep("=",(nrow(cons)-1)),">=")
 		signs=c(signs1,signs2)
 		return(list(lhs,signs,rhs))
 	}
@@ -59,16 +65,16 @@ datacons<-function(noloci,noinds){
 #3 RHS 
 
 dc<-datacons(noloci,noinds)
-
-#2) X matrix, need 2x!
-#Need to add marker effects as coefficients to 
+###########################################################
+#Marker effects as coefficients on data decision variable matrix
+#Inputs: number of loci, number of individuals to select from, marker effects
 #X<=sumk(dataijk)
-xmat=function(noloci,noinds){
+xmat=function(noloci,noinds,data){
 		#Data variable matrix
 		#LHS
 	it=array(0,dim=c(noloci*2,noloci*2*noinds))
 		for(i in 1:(noloci*2)){
-			it[i,seq(i,noloci*2*noinds,20)]=1
+			it[i,seq(i,noloci*2*noinds,noloci*2)]=data[seq(i,noloci*2*noinds,noloci*2)]
 		}
 		#RHS
 			x=-diag(noloci*2)
@@ -84,7 +90,7 @@ xmat=function(noloci,noinds){
 			return(list(lhs,sign,rhs))
 	}
 
-xm<-xmat(noloci,noinds)
+xm<-xmat(noloci,noinds,data)
 #3 Transition matrix
 #sumj(Tijk)=1
 #TM:noloci*16/4 - 4
@@ -184,11 +190,18 @@ gg=xt(tm,mx)
 
 ########################################
 #Compiling variables: LHS, SIGN, RHS
+#dc sets the value of xij as sum of coefficients (marker-effect) at
+
 compile<-function(dc,mx,gg){
 a<-ncol(gg[[1]])-ncol(dc[[1]])
 b<-ncol(gg[[1]])-ncol(xm[[1]])
 
+
+#Variable block matrix structure
+#[Meff Data for parent 1][S variable][Zeros]
+#[Meff Data for Parent 2][Zeros][S variable]
 datamat=cbind(dc[[1]],array(0,dim=c(nrow(dc[[1]]),a)))
+
 xm2=cbind(xm[[1]],array(0,dim=c(nrow(xm[[1]]),b)))
 
 lhs.big=rbind(datamat,xm2,gg)
@@ -196,3 +209,10 @@ sign.big=c(dc[[2]],xm2[[2]],gg[[2]])
 rhs.big=c(dc[[3]],xm[[3]],gg[[3]])
 return(list(lhs.big,sign.big))
 }
+
+fin=compile(dc,mx,gg)
+
+OF=array(0,ncol(fin[[1]]))
+a=ncol(fin[[1]])-(noloci*16+noloci*2*2)
+b=a:(a+noloci*2*2)
+OF[b]=1
