@@ -5,11 +5,14 @@ noinds=2
 
 #linkage group 'beginning' loci
 #lgend=c(1,50)
-lgend=c(1,100,200,300,400,500,600,700,800,900)
+lgend=c(1,300,600,900)
 #Number of feasible recombinations
-norec=4
+norec=8
 
 ###################################################
+#Building Constraint Matrices
+###################################################
+
 #Simulated marker effect matrix
 effects=rnorm(noloci,2,0.01)
 geno=array(sample(c(0,1),noloci*2*noinds,replace=TRUE),dim=c(noloci,2,noinds))
@@ -96,7 +99,7 @@ tmat<-function(one,two,three,four){
 
 #LHS
 lhs=rbind(output,tm2,trc)
-sign=c(rep("=",nrow(output)),rep("=",nrow(tm2)),"<=")
+sign=c(rep("==",nrow(output)),rep("==",nrow(tm2)),"<=")
 rhs=c(rep(0,nrow(output)),rep(1,nrow(tm2)),norec)
 	return(list(lhs,sign,rhs))
 }
@@ -113,10 +116,13 @@ for(i in 1:nrow(data)){
 const=tm[[1]]
 const.dir=tm[[2]]
 const.rhs=tm[[3]]
-const.dir=gsub('^=',"==",const.dir)
 xa=rep("B",ncol(const))
-system.time({result=Rglpk_solve_LP(OF, const, const.dir, const.rhs, types = xa, max = TRUE)})
+system.time({result=Rglpk_solve_LP(OF, const, const.dir, const.rhs, types = xa, control = list("verbose" =
+TRUE), max = TRUE)})
 
+########################################################################################################
+#Viewing Optimal Solution
+########################################################################################################
 
 x=c()
 res=result$solution
@@ -141,10 +147,42 @@ sum(data*fin)
 	for(i in length(oo)){
 	del=c(del,oo[i]:tt[i])
 	}
-sum(x[,c(2,3,4,6,7,8,10,11,12,14,15)])
 
+res=result$solution
+res[del]=0
+sum(res)
 
+x=c()
+for(i in 1:noloci){
+x<-rbind(x,res[1:16])
+res=res[-c(1:16)]
+}
+a<-rowSums(x[,1:4])
+b<-rowSums(x[,5:8])
+c<-rowSums(x[,9:12])
+d<-rowSums(x[,13:16])
+fin=cbind(a,b,c,d)
 
+#return the targeted rec
+cnt=0
+recpts=c()
+for(i in c(2,3,4,6,7,8,10,11,12,14,15)){
+counter=counter+sum(which(x[,i]==1)%in%lgend)
+print(which(x[,i]==1)%in%lgend)
+recpts=c(recpts,which(x[,i]==1))
+}
+targrec=recpts[which(!recpts%in%lgend)]
+
+pos<-c()
+chr<-c()
+for(i in 1:length(targrec)){
+qw=max(which(lgend<targrec[i]))
+chr=c(chr,qw)
+pp=sort((qw-1)*300)
+pos=c(pos,targrec[i]-pp)
+}
+
+recpts=data.frame(Chr=chr,TC.locus.BP=pos)
 ###################################################
 #Brute force optimization of mate-pair
 #Integer programming to determine optimal recombination points
