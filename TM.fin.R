@@ -1,11 +1,12 @@
+#sudo apt-get install glpk-utils libglpk-dev glpk-doc
 #Transition matrix optimization only
 library(Rglpk)
-noloci=1000
+noloci=3000
 noinds=2
 
 #linkage group 'beginning' loci
 #lgend=c(1,50)
-lgend=c(1,300,600,900)
+lgend=c(1,300,600,900,1200,1500,1800,2100,2400,2700)
 #Number of feasible recombinations
 norec=8
 
@@ -167,7 +168,7 @@ fin=cbind(a,b,c,d)
 cnt=0
 recpts=c()
 for(i in c(2,3,4,6,7,8,10,11,12,14,15)){
-counter=counter+sum(which(x[,i]==1)%in%lgend)
+cnt=cnt+sum(which(x[,i]==1)%in%lgend)
 print(which(x[,i]==1)%in%lgend)
 recpts=c(recpts,which(x[,i]==1))
 }
@@ -183,6 +184,33 @@ pos=c(pos,targrec[i]-pp)
 }
 
 recpts=data.frame(Chr=chr,TC.locus.BP=pos)
+
+haps<-c()
+chr<-c()
+#Getting individual haplotype values
+hap.inds=sort(c(targrec,lgend,nrow(data)))
+for(i in 1:(length(hap.inds)-1)){
+a=hap.inds[i]
+b=hap.inds[i+1]
+if(sum(b==lgend)>0&sum(a==lgend)==0){
+	b=b+1
+	}
+if(sum(a==lgend)>0&sum(b==lgend)>0){
+	print("Chromosome ends")
+			}else{
+				haps=rbind(haps,colSums(data[a:b,]))
+				zz<-which(as.numeric(a<c(lgend,nrow(data)))==1)[1]-1
+				chr=c(chr,zz)
+		}
+	}
+
+hap2<-data.frame(chr,cbind(haps,apply(haps,1,which.max)))
+names(hap2)=c("Chr","AH1","AH2","BH1","BH4","Max")
+
+
+
+hap2
+
 ###################################################
 #Brute force optimization of mate-pair
 #Integer programming to determine optimal recombination points
