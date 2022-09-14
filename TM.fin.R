@@ -1,12 +1,22 @@
 #sudo apt-get install glpk-utils libglpk-dev glpk-doc
 #Transition matrix optimization only
 library(Rglpk)
-noloci=3000
+noloci=5000
 noinds=2
 
 #linkage group 'beginning' loci
 #lgend=c(1,50)
-lgend=c(1,300,600,900,1200,1500,1800,2100,2400,2700)
+#lgend=c(1,300,600,900,1200,1500,1800,2100,2400,2700)
+#Int: chromosome interval length
+int=500
+lgend=seq(0,4500,int)
+lgend[1]=1
+
+rr<-c()
+for(i in 1:length(lgend)){
+rr<-c(rr,c(0.5,rep(0.01,int-1)))
+}
+
 #Number of feasible recombinations
 norec=8
 
@@ -179,7 +189,7 @@ chr<-c()
 for(i in 1:length(targrec)){
 qw=max(which(lgend<targrec[i]))
 chr=c(chr,qw)
-pp=sort((qw-1)*300)
+pp=sort((qw-1)*int)
 pos=c(pos,targrec[i]-pp)
 }
 
