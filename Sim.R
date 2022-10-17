@@ -7,14 +7,20 @@
 library(rrBLUP)
 library(Rcpp)
 library(RcppArmadillo)
+library(tictoc)
 sourceCpp("/Users/gnyku/Desktop/Introgression-tools/Meiosis.cpp")
 sourceCpp("/mnt/Introgression-tools/Meiosis.cpp")
 nochrom=10
+
+#Parameters
+norec=10
 #####
 #heritability
-h2<-0.25
-# RR model for GS sim
-nl<-100000   #no. hypothetical loci
+h2<-0.5
+# RR model for MAIZE GENOME (~2000cM)
+#2000cM, 1 locus every 0.01cM, 2000cM=x*.01cM
+#x=200000
+nl<-200000   #no. hypothetical loci
 no.qtl<-2000 #no. QTL
 no.markers<-2000 #no. markers
 #unique founder haplotypes
@@ -36,7 +42,7 @@ QTL_effects<-rnorm(no.qtl,0,0.1)
 ################################################################
 #Calculating genetic map-distances
 ################################################################
-#1 Calculate subset all qtl and marker indicies into their respective linkage groups
+#1 Calculate subset all qtl and marker indices into their respective linkage groups
 #length of each chromosome
 cl<-nl/10
 lg<-seq(0,nl,cl) #linkage group intevals
@@ -204,8 +210,6 @@ cor(t(ff),test.pheno)
 ###################################################################################
 #Start for loop here outside of all possible combinations
 
-#Parameters
-norec=20
 
 #Parental genotypes
 a=test[,1:2]
@@ -361,7 +365,7 @@ hap.inds=unique(sort(c(targrec,lgend1,lgend2)))
 #Chromosome and index position in map file of recombination points
 zz=cbind(hap.inds,as.numeric(map.tog.markers$Chrom[hap.inds]))
 output=hapint(zz,map.tog.markers,lgend1,lgend2,data)
-
+truth(output,map.tog,map.tog.markers,recpts,pars,qtl_index,QTL_effects,nochrom)
 #############################################################
 #Loop
 #############################################################
@@ -495,65 +499,6 @@ last=seq(1,length(ind2),2)+1
 out=rbind(out,nh)
 }
 
-#########################################################################
-#########################################################################
-#########################################################################
-truth=function(){
-lgenda=c()
-lgendb=c()
-for(i in unique(map.tog$Chrom)){
-lgenda=c(lgenda,min(which(map.tog$Chrom==i)))
-lgendb=c(lgendb,max(which(map.tog$Chrom==i)))
-}
-
-#Calculating True Genetic value
-out=c()
-chr=c()
-qtlcnt=1
-for(i in 1:nochrom){
-
-doot=pars[which(map.tog$Chrom==i),]
-haps=subset(recpts,Chrom==i)$marker
-#ind=sort(unique(c(which(map.tog.markers$marker%in%haps),lgenda[i],lgendb[i])))
-#Get loci interval of QTL in haplotype
-ind=sort(c(map.tog.markers[c(which(map.tog.markers$marker%in%haps)),]$marker,lgenda[i],lgendb[i]))
-
-#If there are more than 2 QTL in the haplotype
-if(length(ind)>2){
-ind2=sort(c(ind,ind[2:(length(ind)-1)]-1))
-}else{ind2=ind}
-print(length(ind2)/2)
-nh=c()			
-first=seq(1,length(ind2),2)
-last=seq(1,length(ind2),2)+1
-
-	for(j in 1:length(seq(1,length(ind2),2))){
-		rws=qtl_index[which(qtl_index>=ind2[first[j]]&qtl_index<=ind2[last[j]])]
-		
-		if(length(rws)==1){
-		hapvals=t(t(pars[rws,])*QTL_effects[which(qtl_index>=min(rws)&qtl_index<=max(rws))])
-		nh=rbind(nh,t(hapvals))
-		}else if(length(rws)>=2){
-		hapvals=t(t(pars[rws,])%*% QTL_effects[which(qtl_index>=min(rws)&qtl_index<=max(rws))])
-		nh=rbind(nh,hapvals)
-			}else if(length(rws)==0){
-		nh=rbind(nh,rep(0,4))
-		}
-		}
-	out=rbind(out,nh)
-	chr=c(chr,rep(i,length(ind2)/2))			
-	}
-
-ll=output[[1]]
-
-gh=c()
-for(i in 1:nrow(ll)){
-gh=c(gh,out[i,ll$Max[i]])
-}
-return(gh)
-}
-gh=truth()
-
 ###########################################################################
 ###########################################################################
 #############PARALLEL SIMULATION CODE######################################
@@ -566,6 +511,7 @@ detectCores()
 
 truval=c()
 set=t(combn(100,2))
+set=rbind(set,cbind(1:100,1:100))
 fina=list()
 
 cty<- makeCluster(20, type = "SOCK")
@@ -576,105 +522,14 @@ clusterExport(cty, list("nochrom","truth","hapint","getgeno","tmat","map.tog",
 "const","const.rhs","const.dir",
 "lgend1","lgend2","opt"))
 
-opt=function(dp){
-a<-test[,(2*set[dp,1]-1):(2*set[dp,1])]
-b<-test[,(2*set[dp,2]-1):(2*set[dp,2])]
-pars<-cbind(a,b)
-geno<-pars[marker_index,]
-####################################################
-#Estimated marker effects x genotypic matrix
-data<-geno
-
-for(i in 1:ncol(geno)){
-data[,i]=geno[,i]*meff
-}
-
-OF=c()
-for(i in 1:nrow(data)){
-	for(j in 1:ncol(data)){
-			OF=c(OF,rep(data[i,j],4))
-		}
-	}
-
-xa=rep("B",ncol(const))
-system.time({result=Rglpk_solve_LP(OF, const, const.dir, const.rhs, types = xa, control = list("verbose" =
-TRUE), max = TRUE)})
-
-x=c()
-res=result$solution
-for(i in 1:nrow(data)){
-x<-rbind(x,res[1:16])
-res=res[-c(1:16)]
-}
-
-a<-rowSums(x[,1:4])
-b<-rowSums(x[,5:8])
-c<-rowSums(x[,9:12])
-d<-rowSums(x[,13:16])
-fin=cbind(a,b,c,d)
-
-#Optimal haplotype
-opthap=data*fin
-sum(data*fin)
-
-#Total number of recombinations 
-	oo<-lgend1*16-16+1
-	tt<-oo+15
-
-	del=c()
-	for(i in length(oo)){
-	del=c(del,oo[i]:tt[i])
-	}
-
-res=result$solution
-#res[del]=0
-sum(res)
-
-x=c()
-for(i in 1:nrow(geno)){
-x<-rbind(x,res[1:16])
-res=res[-c(1:16)]
-}
-a<-rowSums(x[,1:4])
-b<-rowSums(x[,5:8])
-c<-rowSums(x[,9:12])
-d<-rowSums(x[,13:16])
-fin=cbind(a,b,c,d)
-
-#return the Optimal recombination points
-cnt=0
-recpts=c()
-for(i in c(2,3,4,6,7,8,10,11,12,14,15,16)){
-cnt=cnt+sum(which(x[,i]==1)%in%lgend1)
-print(which(x[,i]==1)%in%lgend1)
-recpts=c(recpts,which(x[,i]==1))
-}
-targrec=recpts[which(!recpts%in%lgend1)]
-
-recpts=map.tog.markers[targrec,]
-recpts=recpts[order(recpts$Chrom,recpts$marker),]
-
-hap.inds=sort(c(targrec,lgend1,nrow(data)))
-#BUILDING
-#Chromosome and index position in map file of recombination points
-zz=cbind(hap.inds,as.numeric(map.tog.markers$Chrom[hap.inds]))
-
-output=hapint(zz,map.tog.markers,lgend1,lgend2,data)
-
-#GEBV
-val=sum(data*fin)
-#write.csv(file='vals.out.csv',row.names=FALSE,c(a,b))
-#tru<-truth(pars,map.tog,recpts)
-#TRUTH
-tru<-sum(truth(output,map.tog,map.tog.markers,recpts,pars,qtl_index,QTL_effects,nochrom))
-return(list(val,tru))
-}
-
 tic();
 output=parSapply(cty,1:nrow(set),opt);
 toc();
 
 stopCluster(cty)
+out=cbind(unlist(output[1,]),unlist(output[2,]))
+out2=out[order(out[,1],decreasing=TRUE),] 
+stuff=list(rr,test,meff,QTL_effects,qtl_index,output,marker_index,g_val.test,test.pheno,out2)
 #####################################################################
 #####################################################################
 #####################################################################
@@ -861,16 +716,118 @@ sign=c(rep("==",nrow(output)),rep("==",nrow(tm2)),"<=")
 rhs=c(rep(0,nrow(output)),rep(1,nrow(tm2)),norec)
 	return(list(lhs,sign,rhs))
 }
+
+
+
+opt=function(dp){
+a<-test[,(2*set[dp,1]-1):(2*set[dp,1])]
+b<-test[,(2*set[dp,2]-1):(2*set[dp,2])]
+pars<-cbind(a,b)
+geno<-pars[marker_index,]
+####################################################
+#Estimated marker effects x genotypic matrix
+data<-geno
+
+for(i in 1:ncol(geno)){
+data[,i]=geno[,i]*meff
+}
+
+OF=c()
+for(i in 1:nrow(data)){
+	for(j in 1:ncol(data)){
+			OF=c(OF,rep(data[i,j],4))
+		}
+	}
+
+xa=rep("B",ncol(const))
+system.time({result=Rglpk_solve_LP(OF, const, const.dir, const.rhs, types = xa, control = list("verbose" =
+TRUE), max = TRUE)})
+
+x=c()
+res=result$solution
+for(i in 1:nrow(data)){
+x<-rbind(x,res[1:16])
+res=res[-c(1:16)]
+}
+
+a<-rowSums(x[,1:4])
+b<-rowSums(x[,5:8])
+c<-rowSums(x[,9:12])
+d<-rowSums(x[,13:16])
+fin=cbind(a,b,c,d)
+
+#Optimal haplotype
+opthap=data*fin
+sum(data*fin)
+
+#Total number of recombinations 
+	oo<-lgend1*16-16+1
+	tt<-oo+15
+
+	del=c()
+	for(i in length(oo)){
+	del=c(del,oo[i]:tt[i])
+	}
+
+res=result$solution
+#res[del]=0
+sum(res)
+
+x=c()
+for(i in 1:nrow(geno)){
+x<-rbind(x,res[1:16])
+res=res[-c(1:16)]
+}
+a<-rowSums(x[,1:4])
+b<-rowSums(x[,5:8])
+c<-rowSums(x[,9:12])
+d<-rowSums(x[,13:16])
+fin=cbind(a,b,c,d)
+
+#return the Optimal recombination points
+cnt=0
+recpts=c()
+for(i in c(2,3,4,6,7,8,10,11,12,14,15,16)){
+cnt=cnt+sum(which(x[,i]==1)%in%lgend1)
+print(which(x[,i]==1)%in%lgend1)
+recpts=c(recpts,which(x[,i]==1))
+}
+targrec=recpts[which(!recpts%in%lgend1)]
+
+recpts=map.tog.markers[targrec,]
+recpts=recpts[order(recpts$Chrom,recpts$marker),]
+
+hap.inds=sort(c(targrec,lgend1,nrow(data)))
+#BUILDING
+#Chromosome and index position in map file of recombination points
+zz=cbind(hap.inds,as.numeric(map.tog.markers$Chrom[hap.inds]))
+
+output=hapint(zz,map.tog.markers,lgend1,lgend2,data)
+
+#GEBV
+val=sum(data*fin)
+#write.csv(file='vals.out.csv',row.names=FALSE,c(a,b))
+#tru<-truth(pars,map.tog,recpts)
+#TRUTH
+tru<-sum(truth(output,map.tog,map.tog.markers,recpts,pars,qtl_index,QTL_effects,nochrom))
+return(list(val,tru))
+}
+
 ################################################
 #END FUNCTIONS
 ################################################
-nn=array(0,length(rr))
-nn[qtl_index]=QTL_effects
-cc=cbind(map.tog$Chrom,nn)
+################################################
+ind=which.max(test.pheno)
+hi=test[,c(ind*2-1,ind*2)]
+t(getgeno(hi[qtl_index,]))%*%QTL_effects
 
-qtl=map.tog[qtl_index,]
-hh=subset(qtl,Chrom==1)
-p2=t(pars[which(map.tog$Chrom==10),])%*%nn[which(map.tog$Chrom==10)]
-p3=t(pars[which(map.tog$Chrom==1),])%*%nn[which(map.tog$Chrom==10)]
+#Maximum value from 1000 evaluations of gametes
+gv=t(meiosis(1000,rr,hi,hi)[qtl_index,])%*%QTL_effects*2
+pv=gv+rnorm(length(gv),0,error_sd)
+pp=cbind(gv,pv)
+pp2=pp[order(pp[,2],decreasing=TRUE),]
 
-t(getgen(meiosis(100,rr,a,b)))%*%QTL_effects
+#Getting QTL effects at loci that are not fixed
+for(i in 1:length(qtl_index)){if(length(unique(test[qtl_index[i],]))==2)
+holdout=c(holdout,i)
+}
