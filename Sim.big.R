@@ -10,15 +10,7 @@ library(tictoc)
 library(snow)
 install.packages("/mnt/Introgression-tools/Meiosis_1.0.tar.gz",source='local',repos=NULL)
 library(Meiosis)
-load('tm.save.RData')
 
-const=tm[[1]]
-const.dir=tm[[2]]
-const.rhs=tm[[3]]
-xa=rep("B",ncol(const))
-
-#Remove tm so not to hold in memory
-rm(tm)
 ###########################################################
 tic();
 ###########################################################
@@ -45,6 +37,40 @@ nohaps=10
 #Number of sims
 nosims=100
 
+############################################################
+#Step 1: Building Constraint matrix
+############################################################
+#Constraints of row1 to row2; inflow must equal outflow
+#Must have founders create (i.e. total number of loci)
+one=array(0,32)
+one[1:4]=1
+one[16+c(1,6,10,14)]=-1
+
+two=array(0,32)
+two[5:8]=1
+two[16+c(2,5,11,15)]=-1
+
+three=array(0,32)
+three[9:12]=1
+three[16+c(3,7,9,16)]=-1
+
+four=array(0,32)
+four[13:16]=1
+four[16+c(4,8,12,13)]=-1
+
+tm=tmat(one,two,three,four,no.markers)
+
+#save(file='tm.save.RData',tm)
+
+#load('tm.save.RData')
+
+const=tm[[1]]
+const.dir=tm[[2]]
+const.rhs=tm[[3]]
+xa=rep("B",ncol(const))
+
+#Remove tm so not to hold in memory
+rm(tm)
 #################################################################
 #@@@@@@@@@@@@@@@@@@@@@@@Sim Start@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
 #################################################################
@@ -171,6 +197,7 @@ tic();
 
 toc();
 }
+stopCluster(cty)
 toc();
 
 input1=input
@@ -179,7 +206,7 @@ input1=input
 #Selection to deviate random allele frequencies
 ###################################################
 
-cty<- makeCluster(25, type = "SOCK")
+cty<- makeCluster(20, type = "SOCK")
 clusterEvalQ(cty, library("Meiosis"))
 cl2=cl-1
 clusterExport(cty, list("input","rr"))
@@ -207,6 +234,7 @@ clusterExport(cty, list("cl2","input"))
 print(mean(gval))
 output=parLapply(cty,1:nrow(cl2),cross,num=pny);
 
+
 op2=c()
 for(j in 1:length(output)){
 op2=cbind(op2,output[[j]])
@@ -222,6 +250,8 @@ op2=cbind(op2,output[[j]])
 toc();
 print(i)
 }
+stopCluster(cty)
+
 train=input
 
 ###################################################
@@ -326,7 +356,7 @@ set=scores3[1:500,1:2]
 print("OPTIMIZER STEP")
 tic()
 cty<- makeCluster(15, type = "SOCK")
-clusterEvalQ(cty, library(Rglpk))
+clusterEvalQ(cty, c(library(Rglpk)))
 clusterExport(cty, list("nochrom","truth","hapint","getgeno","tmat","map.tog",
 "map.tog.markers","test","qtl_index","QTL_effects",
 "marker_index","meff","effects","set",
@@ -346,6 +376,8 @@ ind=which.max(test.pheno)
 hi=test[,c(ind*2-1,ind*2)]
 t(getgeno(hi[qtl_index,]))%*%QTL_effects
 
+#sourceCpp("/mnt/Meiosis/src/Meiosis.cpp")
+sourceCpp("/mnt/Introgression-tools/Meiosis.cpp")
 #Maximum value from 1000 evaluations of gametes
 gv=t(meiosis(1000,rr,hi,hi)[qtl_index,])%*%QTL_effects
 pv=gv+rnorm(length(gv),0,error_sd)
@@ -707,28 +739,3 @@ pp2=pp[order(pp[,2],decreasing=TRUE),]
 for(i in 1:length(qtl_index)){if(length(unique(test[qtl_index[i],]))==2)
 holdout=c(holdout,i)
 }
-
-############################################################
-#Building Constraint matrix
-############################################################
-#Constraints of row1 to row2; inflow must equal outflow
-#Must have founders create (i.e. total number of loci)
-one=array(0,32)
-one[1:4]=1
-one[16+c(1,6,10,14)]=-1
-
-two=array(0,32)
-two[5:8]=1
-two[16+c(2,5,11,15)]=-1
-
-three=array(0,32)
-three[9:12]=1
-three[16+c(3,7,9,16)]=-1
-
-four=array(0,32)
-four[13:16]=1
-four[16+c(4,8,12,13)]=-1
-
-tm=tmat(one,two,three,four,no.markers)
-
-save(file='tm.save.RData',tm)
