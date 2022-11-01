@@ -54,8 +54,8 @@ NumericMatrix OR1C(NumericMatrix geno,int start, int stop) {
 one=which_max(h1);
 two=which_max(h2);
 
-Rcout << h1(one);
-Rcout << h2(two);
+//Rcout << h1(one);
+//Rcout << h2(two);
 
 ll(i,0)=geno(vec(0),0);
 ll(i,1)=geno(i,1);
