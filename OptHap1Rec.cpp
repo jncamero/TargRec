@@ -20,7 +20,7 @@ NumericMatrix OR1C(NumericMatrix geno,int start, int stop) {
 //THE FIRST RECOMBINATION POINT IS BETWEEN locus 1 and 2
       int one;    
       int two;
-      NumericMatrix ll(m,6);
+      NumericMatrix ll(m,7);
       NumericVector h1(4);
       NumericVector h2(4); 
 // i: recombination point
@@ -61,8 +61,9 @@ ll(i,0)=geno(vec(0),0);
 ll(i,1)=geno(i,1);
 ll(i,2)=h1(one);
 ll(i,3)=h2(two);
-ll(i,4)=one+1;
-ll(i,5)=two+1;
+ll(i,4)=h1(one)+h2(two);
+ll(i,5)=one+1;
+ll(i,6)=two+1;
 }
 
 return ll;
