@@ -58,7 +58,7 @@ two=which_max(h2);
 //Rcout << h2(two);
 
 ll(i,0)=geno(vec(0),0);
-ll(i,1)=geno(i,1);
+ll(i,1)=geno(vec(i),1);
 ll(i,2)=h1(one);
 ll(i,3)=h2(two);
 ll(i,4)=h1(one)+h2(two);
